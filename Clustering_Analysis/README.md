@@ -11,7 +11,7 @@ Segment the client's 6,741 unique customers (7,043 records less 302 duplicates r
 ## Folder structure
 
 ```
-02_Clustering_Jyoti_Saini/
+Clustering_Analysis
 ├── README.md
 ├── requirements.txt
 ├── data/
