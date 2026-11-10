@@ -1,0 +1,5 @@
+Cluster,Segment,Customers,Share_pct,Avg_tenure_months,Avg_monthly_charges,Churn_rate_pct,Senior_pct,Dependents_pct,Phone_pct,Multiple_lines_pct,Fibre_pct,Month_to_month_pct,Two_year_pct
+0,New Budget Customers,1592,23.6,11.2,33.9,24.8,7.3,32.9,77.8,42.5,43.9,51.3,24.6
+1,At-Risk New Premium Customers,2139,31.7,15.2,81.8,48.9,24.4,18.2,99.9,41.9,42.6,55.7,25.0
+2,Loyal Budget Customers,1127,16.7,54.3,34.9,4.9,7.7,44.9,72.7,40.3,44.3,53.9,23.9
+3,Loyal Premium Customers,1883,27.9,58.7,93.2,15.6,21.6,33.6,99.5,43.5,45.4,55.1,24.1

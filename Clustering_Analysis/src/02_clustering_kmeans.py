@@ -41,11 +41,16 @@ RANDOM_STATE = 42
 # In[2]:
 
 
-processed = pd.read_csv("../data/Updated_Dataset.csv")   # output of the Data Engineer's notebook
-raw = pd.read_csv("../data/Dataset_ATS_v2.csv")          # original client file, used for profiling only
+processed = pd.read_csv("../data/Updated_Dataset.csv")   # output of the Data Engineer's notebook (Part 1)
+raw_full = pd.read_csv("../data/Dataset_ATS_v2.csv")     # original client file, used for profiling only
 
-print("Processed dataset:", processed.shape)
-print("Raw dataset:      ", raw.shape)
+# Part 1 now removes exact duplicate rows before any other step, so the same rows are removed here.
+# drop_duplicates keeps the first copy of each row in its original order, so the two files line up row by row.
+raw = raw_full.drop_duplicates().reset_index(drop=True)
+
+print("Processed dataset:            ", processed.shape)
+print("Original client file:         ", raw_full.shape)
+print("Original file, duplicates out:", raw.shape)
 processed.head()
 
 
@@ -59,14 +64,15 @@ print(processed.dtypes)
 # In[4]:
 
 
-print("Missing values (processed):", int(processed.isnull().sum().sum()))
-print("Missing values (raw):      ", int(raw.isnull().sum().sum()))
-print("Duplicate rows (raw):      ", raw.duplicated().sum())
+print("Missing values (processed):        ", int(processed.isnull().sum().sum()))
+print("Missing values (original):         ", int(raw_full.isnull().sum().sum()))
+print("Duplicate rows in the original file:", raw_full.duplicated().sum())
+print("Duplicate rows removed in Part 1:    ", len(raw_full) - len(processed))
 
-# The processed file keeps the same row order as the raw file, so the two can be joined row by row
-same_order = (processed["Churn"].values == raw["Churn"].values).all() and \
-             (processed["Dependents"].values == raw["Dependents"].values).all()
-print("Rows line up with the raw file:", same_order)
+# Churn is 0/1 in Part 1's output and Yes/No in the original file; check the two files line up row by row
+same_order = ((raw["Churn"] == "Yes").astype(int).values == processed["Churn"].values).all() and \
+             (raw["Dependents"].values == processed["Dependents"].values).all()
+print("Rows line up with the original file:", same_order)
 
 
 # In[5]:
@@ -80,8 +86,8 @@ for col in ["gender", "Dependents", "PhoneService", "MultipleLines", "InternetSe
 # **Readiness findings**
 # 
 # - There are no missing values and the category labels are consistent.
-# - The raw file has **302 duplicate rows**. The dataset has no customer ID, and with only ten attributes it is quite possible for two different customers to have exactly the same profile. Removing them would change the size of the segments without any evidence that they are errors, so they are **kept**. This also keeps my data aligned with the dataset the Data Engineer prepared for the ANN model.
-# - Part 1 has standardised the numerical columns and one-hot encoded the service and contract columns as booleans. For K-Means, which needs every input as a number, three small adjustments are made on a separate copy (the Part 1 data is left unchanged):
+# - The original file has **302 exact duplicate rows**. Part 1 now removes them, leaving **6,741 customers**. The same rows are removed from the original file here, so the two files line up row by row and every segment count refers to unique customer records.
+# - Part 1 has standardised the numerical columns, one-hot encoded the service and contract columns as booleans, and converted `Churn` to 0/1. For K-Means, which needs every input as a number, three small adjustments are made on a separate copy (the Part 1 data is left unchanged):
 #   - `gender` and `Dependents` are converted from `Male/Female` and `Yes/No` to 0/1.
 #   - `SeniorCitizen` is used in its original 0/1 form, so that it reads as a simple yes/no flag in the cluster profiles.
 #   - The boolean dummy columns are converted from `True/False` to 1/0.
@@ -97,7 +103,7 @@ df = processed.copy()
 df["gender"] = (df["gender"] == "Male").astype(int)            # 1 = Male, 0 = Female
 df["Dependents"] = (df["Dependents"] == "Yes").astype(int)      # 1 = has dependents
 df["SeniorCitizen"] = raw["SeniorCitizen"].astype(int)          # restore the 0/1 flag
-df["Churn"] = (df["Churn"] == "Yes").astype(int)                # kept aside, NOT used for clustering
+df["Churn"] = df["Churn"].astype(int)                           # already 0/1 from Part 1; kept aside, NOT used for clustering
 
 bool_cols = df.select_dtypes(include="bool").columns
 df[bool_cols] = df[bool_cols].astype(int)
@@ -365,8 +371,8 @@ mix
 # 
 # | Cluster | Segment | Profile | Churn |
 # |---|---|---|---|
-# | C0 | New Budget Customers | Recently joined (about 10 months) and on low-cost plans (about $32 a month); fewer have phone service | Moderate (about 25%) |
-# | C1 | At-Risk New Premium Customers | Recently joined (about 15 months) but paying high monthly charges (about $81); more seniors and fewer dependents | **Highest (about 49%)**, nearly double the average |
+# | C0 | New Budget Customers | Recently joined (about 11 months) and on low-cost plans (about $34 a month); fewer have phone service | Moderate (about 25%) |
+# | C1 | At-Risk New Premium Customers | Recently joined (about 15 months) but paying high monthly charges (about $82); more seniors and fewer dependents | **Highest (about 49%)**, nearly double the average |
 # | C2 | Loyal Budget Customers | Long-standing (about 54 months) on low-cost plans (about $35); the most customers with dependents | Lowest (about 5%) |
 # | C3 | Loyal Premium Customers | Long-standing (about 59 months) and paying the most (about $93); almost all have phone service | Low (about 16%) |
 # 
@@ -374,7 +380,7 @@ mix
 # 
 # - **Tenure is the strongest dividing line.** The two new-customer segments (C0 and C1) account for most of the churn, so the first year or so of a customer's life is where retention effort matters most.
 # - **High charges for new customers are the riskiest combination.** C1 loses almost half of its customers. These customers pay premium prices before they have built loyalty, which makes them the first priority for retention offers.
-# - **Contract type and internet service are spread almost evenly across all four segments** (about 55% month-to-month and 42 to 46% fibre in each), so in this dataset they do not separate customers. The segments are driven by tenure, charges and, to a smaller degree, seniors, dependents and phone service.
+# - **Contract type and internet service are spread almost evenly across all four segments** (51 to 56% month-to-month and 43 to 45% fibre in each), so in this dataset they do not separate customers. The segments are driven by tenure, charges and, to a smaller degree, seniors, dependents and phone service.
 # - Loyal customers (C2 and C3) churn much less, but C3 still brings the highest revenue, so keeping its churn low protects a large share of income.
 
 # ## 8. Save the results for the team
@@ -401,9 +407,31 @@ prof_out.to_csv("../outputs/data/Cluster_Profiles.csv")
 print("Saved to ../outputs: Clustered_Customers.csv, Updated_Dataset_with_Clusters.csv, Cluster_Profiles.csv and five figures")
 
 
+# ## 9. Save the K-Means model file
+# The trained model is saved with joblib together with the feature list, the cluster renumbering and the segment names, so anyone can reload it and label new customers in the same way without retraining.
+
+# In[23]:
+
+
+import os, joblib
+os.makedirs("../outputs/models", exist_ok=True)
+model_package = {
+    "model": kmeans,                 # trained KMeans (k = 4, k-means++, n_init = 10, random_state = 42)
+    "features": features,            # column order the model expects
+    "relabel": relabel,              # raw K-Means label -> cluster number used in the report (C0 to C3)
+    "segment_names": names,
+}
+joblib.dump(model_package, "../outputs/models/kmeans_k4_model.joblib")
+
+# Check: reload the file and confirm it reproduces the saved labels
+loaded = joblib.load("../outputs/models/kmeans_k4_model.joblib")
+check = pd.Series(loaded["model"].predict(X[loaded["features"]])).map(loaded["relabel"])
+print("Model file saved. Labels reproduced:", (check.values == df["Cluster"].values).all())
+
+
 # ## Notes for the team
 # 
-# - **Data preparation (Part 1):** the clustering uses the standardised data from Part 1 without changing it. The 302 duplicate rows were kept in both stages, so the datasets stay aligned.
+# - **Data preparation (Part 1):** the clustering uses the standardised data from Part 1 without changing it. Part 1 removes the 302 duplicate rows; the same rows are removed from the original file here, so all files line up on the same 6,741 customers.
 # - **For Bao (Data Analyst, Predictive):** `Updated_Dataset_with_Clusters.csv` adds the `Cluster` column. It can be one-hot encoded and tested as an extra input. Note that `gender` and `Dependents` are text (`Male/Female`, `Yes/No`) in the Part 1 output, so they will need converting to 0/1 before they go into the ANN. Because churn differs strongly by segment (5% to 49%), stratifying or checking results by segment may also help.
 # - **For Fahad (Business Analyst):** `Clustered_Customers.csv` and `Cluster_Profiles.csv` hold every customer's segment and the segment profiles for retention strategy design. C1 (At-Risk New Premium Customers) is the priority group.
 # 
