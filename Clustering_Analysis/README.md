@@ -6,7 +6,7 @@
 
 ## Purpose
 
-Segment the client's 7,043 customers into meaningful groups with K-Means, profile each group, and compare churn across the groups, so that the ANN model (Part 3) and the retention strategies (Part 4) can target the customers most likely to leave.
+Segment the client's 6,741 unique customers (7,043 records less 302 duplicates removed in Part 1) into meaningful groups with K-Means, profile each group, and compare churn across the groups, so that the ANN model (Part 3) and the retention strategies (Part 4) can target the customers most likely to leave.
 
 ## Folder structure
 
@@ -50,11 +50,11 @@ Inputs are read from `data/` and all results are written to `outputs/`. The mode
 
 ## Method
 
-1. **Readiness check (C1):** 7,043 rows, no missing values, consistent labels. 302 duplicate rows kept (no customer ID).
-2. **Feature selection (C2):** 9 features: tenure, MonthlyCharges, SeniorCitizen, Dependents, PhoneService, MultipleLines, Fibre internet, One-year and Two-year contract. Churn held back; gender excluded (churn 26.9% vs 26.2%).
+1. **Readiness check (C1):** 6,741 rows after Part 1 removed 302 duplicates; no missing values, consistent labels. The same duplicates are removed from the original file so both files line up row by row.
+2. **Feature selection (C2):** 9 features: tenure, MonthlyCharges, SeniorCitizen, Dependents, PhoneService, MultipleLines, Fibre internet, One-year and Two-year contract. Churn held back; gender excluded (churn 27.1% vs 26.1%).
 3. **Encoding and scaling (C3):** text and boolean columns converted to 0/1; tenure and MonthlyCharges standardised (mean 0, SD 1) in Part 1.
 4. **Number of clusters (C4):** elbow method and silhouette score for k = 1 to 10; k = 4 chosen.
-5. **Final model (C5):** K-Means, k = 4, k-means++, n_init = 10, random_state = 42. Silhouette 0.225; stability check ARI 0.999 to 1.0.
+5. **Final model (C5):** K-Means, k = 4, k-means++, n_init = 10, random_state = 42. Silhouette 0.221; stability check ARI 0.998 to 1.0.
 6. **Profiling (C6):** PCA plot (62% of variance in two components) and segment profiles.
 7. **Model file:** saved to `outputs/models/kmeans_k4_model.joblib` (reload check passed).
 8. **Handover (C7):** outputs below delivered on 1 November 2026.
@@ -73,20 +73,24 @@ segments = clusters.map(pkg["segment_names"])
 
 | Cluster | Segment | Customers | Avg tenure | Avg monthly charge | Churn rate |
 |---|---|---|---|---|---|
-| C0 | New Budget Customers | 1,721 (24.4%) | 10 months | $32 | 24.6% |
-| C1 | At-Risk New Premium Customers | 2,223 (31.6%) | 15 months | $81 | 49.0% |
-| C2 | Loyal Budget Customers | 1,176 (16.7%) | 54 months | $35 | 4.8% |
-| C3 | Loyal Premium Customers | 1,923 (27.3%) | 59 months | $93 | 15.5% |
+| C0 | New Budget Customers | 1,592 (23.6%) | 11 months | $34 | 24.8% |
+| C1 | At-Risk New Premium Customers | 2,139 (31.7%) | 15 months | $82 | 48.9% |
+| C2 | Loyal Budget Customers | 1,127 (16.7%) | 54 months | $35 | 4.9% |
+| C3 | Loyal Premium Customers | 1,883 (27.9%) | 59 months | $93 | 15.6% |
 
-Overall churn is 26.5%. C1 holds 58.3% of all churners and about two thirds of the monthly revenue lost to churn, so it is the priority group for retention. Contract type and internet service are spread evenly across all four segments.
+Overall churn is 26.6%. C1 holds 58.5% of all churners and about two thirds of the monthly revenue lost to churn, so it is the priority group for retention. Contract type and internet service are spread evenly across all four segments.
 
 ## Handover
 
 | For | File |
 |---|---|
-| Part 3, ANN (Bao) | `outputs/data/Updated_Dataset_with_Clusters.csv` (note: gender and Dependents are text and need converting to 0/1) |
+| Part 3, ANN (Bao) | `outputs/data/Updated_Dataset_with_Clusters.csv` (6,741 rows; gender and Dependents are text and need converting to 0/1; Churn is already 0/1) |
 | Part 4, Business analysis (Fahad) | `outputs/data/Clustered_Customers.csv`, `outputs/data/Cluster_Profiles.csv` |
 | Stage 2 deliverables (Raman) | `docs/Jyoti_Saini_Stage2_Clustering_Results_Report.docx`, `outputs/figures/` |
+
+## Change log
+
+- **10 November 2026:** re-run after Part 1 started removing the 302 duplicate rows. All outputs, figures, the model file and the report now use 6,741 customers. The four segments and k = 4 are unchanged; figures moved by less than one percentage point.
 
 ## Limitations
 
